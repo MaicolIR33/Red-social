@@ -9,55 +9,57 @@ router.get("/", (req, res) => {
     query += ` AND ${key} LIKE ?`;
     params.push(`%${value}%`);
   });
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const rows = db.prepare(query).all(params);
     res.json({ success: true, total: rows.length, data: rows });
-  });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.get("/:id", (req, res) => {
-  db.get("SELECT * FROM categorias WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const row = db.prepare("SELECT * FROM categorias WHERE id = ?").get(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: "Categoría no encontrada" });
     res.json({ success: true, data: row });
-  });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.post("/", (req, res) => {
   const { nombre, descripcion } = req.body;
   if (!nombre) return res.status(400).json({ success: false, message: "nombre es obligatorio" });
-
-  db.run("INSERT INTO categorias (nombre, descripcion) VALUES (?, ?)", [nombre, descripcion], function (err) {
-    if (err) {
-      if (err.message.includes("UNIQUE")) return res.status(400).json({ success: false, message: "La categoría ya existe" });
-      return res.status(500).json({ success: false, message: err.message });
-    }
-    res.status(201).json({ success: true, message: "Categoría creada", data: { id: this.lastID } });
-  });
+  try {
+    const result = db.prepare("INSERT INTO categorias (nombre, descripcion) VALUES (?, ?)").run(nombre, descripcion);
+    res.status(201).json({ success: true, message: "Categoría creada", data: { id: result.lastInsertRowid } });
+  } catch (err) {
+    if (err.message.includes("UNIQUE")) return res.status(400).json({ success: false, message: "La categoría ya existe" });
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.put("/:id", (req, res) => {
   const { nombre, descripcion } = req.body;
-  db.get("SELECT id FROM categorias WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const row = db.prepare("SELECT id FROM categorias WHERE id = ?").get(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: "Categoría no encontrada" });
-    db.run("UPDATE categorias SET nombre = COALESCE(?, nombre), descripcion = COALESCE(?, descripcion) WHERE id = ?",
-      [nombre, descripcion, req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        res.json({ success: true, message: "Categoría actualizada" });
-      });
-  });
+    db.prepare("UPDATE categorias SET nombre = COALESCE(?, nombre), descripcion = COALESCE(?, descripcion) WHERE id = ?").run(nombre, descripcion, req.params.id);
+    res.json({ success: true, message: "Categoría actualizada" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.delete("/:id", (req, res) => {
-  db.get("SELECT id FROM categorias WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const row = db.prepare("SELECT id FROM categorias WHERE id = ?").get(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: "Categoría no encontrada" });
-    db.run("DELETE FROM categorias WHERE id = ?", [req.params.id], (err) => {
-      if (err) return res.status(500).json({ success: false, message: err.message });
-      res.json({ success: true, message: "Categoría eliminada" });
-    });
-  });
+    db.prepare("DELETE FROM categorias WHERE id = ?").run(req.params.id);
+    res.json({ success: true, message: "Categoría eliminada" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 module.exports = router;

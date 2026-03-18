@@ -9,18 +9,22 @@ router.get("/", (req, res) => {
     query += ` AND ${key} LIKE ?`;
     params.push(`%${value}%`);
   });
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const rows = db.prepare(query).all(params);
     res.json({ success: true, total: rows.length, data: rows });
-  });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.get("/:id", (req, res) => {
-  db.get("SELECT * FROM posts WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const row = db.prepare("SELECT * FROM posts WHERE id = ?").get(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: "Post no encontrado" });
     res.json({ success: true, data: row });
-  });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.post("/", (req, res) => {
@@ -31,46 +35,39 @@ router.post("/", (req, res) => {
   if (titulo.length < 3) {
     return res.status(400).json({ success: false, message: "El titulo debe tener al menos 3 caracteres" });
   }
-
-  db.get("SELECT id FROM usuarios WHERE id = ?", [usuario_id], (err, user) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const user = db.prepare("SELECT id FROM usuarios WHERE id = ?").get(usuario_id);
     if (!user) return res.status(404).json({ success: false, message: "El usuario no existe" });
-
-    db.get("SELECT id FROM categorias WHERE id = ?", [categoria_id], (err, cat) => {
-      if (err) return res.status(500).json({ success: false, message: err.message });
-      if (!cat) return res.status(404).json({ success: false, message: "La categoría no existe" });
-
-      db.run("INSERT INTO posts (usuario_id, categoria_id, titulo, contenido, imagen_url) VALUES (?, ?, ?, ?, ?)",
-        [usuario_id, categoria_id, titulo, contenido, imagen_url], function (err) {
-          if (err) return res.status(500).json({ success: false, message: err.message });
-          res.status(201).json({ success: true, message: "Post creado", data: { id: this.lastID } });
-        });
-    });
-  });
+    const cat = db.prepare("SELECT id FROM categorias WHERE id = ?").get(categoria_id);
+    if (!cat) return res.status(404).json({ success: false, message: "La categoría no existe" });
+    const result = db.prepare("INSERT INTO posts (usuario_id, categoria_id, titulo, contenido, imagen_url) VALUES (?, ?, ?, ?, ?)").run(usuario_id, categoria_id, titulo, contenido, imagen_url);
+    res.status(201).json({ success: true, message: "Post creado", data: { id: result.lastInsertRowid } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.put("/:id", (req, res) => {
   const { titulo, contenido, imagen_url } = req.body;
-  db.get("SELECT id FROM posts WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const row = db.prepare("SELECT id FROM posts WHERE id = ?").get(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: "Post no encontrado" });
-    db.run("UPDATE posts SET titulo = COALESCE(?, titulo), contenido = COALESCE(?, contenido), imagen_url = COALESCE(?, imagen_url) WHERE id = ?",
-      [titulo, contenido, imagen_url, req.params.id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        res.json({ success: true, message: "Post actualizado" });
-      });
-  });
+    db.prepare("UPDATE posts SET titulo = COALESCE(?, titulo), contenido = COALESCE(?, contenido), imagen_url = COALESCE(?, imagen_url) WHERE id = ?").run(titulo, contenido, imagen_url, req.params.id);
+    res.json({ success: true, message: "Post actualizado" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.delete("/:id", (req, res) => {
-  db.get("SELECT id FROM posts WHERE id = ?", [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ success: false, message: err.message });
+  try {
+    const row = db.prepare("SELECT id FROM posts WHERE id = ?").get(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: "Post no encontrado" });
-    db.run("DELETE FROM posts WHERE id = ?", [req.params.id], (err) => {
-      if (err) return res.status(500).json({ success: false, message: err.message });
-      res.json({ success: true, message: "Post eliminado" });
-    });
-  });
+    db.prepare("DELETE FROM posts WHERE id = ?").run(req.params.id);
+    res.json({ success: true, message: "Post eliminado" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 module.exports = router;

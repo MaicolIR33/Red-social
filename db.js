@@ -1,24 +1,19 @@
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3");
 
-const db = new sqlite3.Database("./database.db", (err) => {
-  if (err) {
-    console.error("❌ Error al conectar con SQLite:", err.message);
-  } else {
-    console.log("✅ Conectado a SQLite correctamente");
-  }
-});
+const db = new Database("./database.db");
 
-db.serialize(() => {
+console.log("✅ Conectado a SQLite correctamente");
 
-  db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
-  )`);
+  );
 
-  db.run(`CREATE TABLE IF NOT EXISTS perfiles (
+  CREATE TABLE IF NOT EXISTS perfiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER NOT NULL UNIQUE,
     nombre_completo TEXT,
@@ -26,15 +21,15 @@ db.serialize(() => {
     foto_url TEXT,
     sitio_web TEXT,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-  )`);
+  );
 
-  db.run(`CREATE TABLE IF NOT EXISTS categorias (
+  CREATE TABLE IF NOT EXISTS categorias (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL UNIQUE,
     descripcion TEXT
-  )`);
+  );
 
-  db.run(`CREATE TABLE IF NOT EXISTS posts (
+  CREATE TABLE IF NOT EXISTS posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER NOT NULL,
     categoria_id INTEGER NOT NULL,
@@ -45,9 +40,9 @@ db.serialize(() => {
     CHECK (length(titulo) >= 3),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
     FOREIGN KEY (categoria_id) REFERENCES categorias(id)
-  )`);
+  );
 
-  db.run(`CREATE TABLE IF NOT EXISTS comentarios (
+  CREATE TABLE IF NOT EXISTS comentarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER NOT NULL,
     usuario_id INTEGER NOT NULL,
@@ -56,9 +51,9 @@ db.serialize(() => {
     CHECK (length(contenido) >= 1),
     FOREIGN KEY (post_id) REFERENCES posts(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-  )`);
+  );
 
-  db.run(`CREATE TABLE IF NOT EXISTS likes (
+  CREATE TABLE IF NOT EXISTS likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER NOT NULL,
     usuario_id INTEGER NOT NULL,
@@ -66,9 +61,9 @@ db.serialize(() => {
     UNIQUE(post_id, usuario_id),
     FOREIGN KEY (post_id) REFERENCES posts(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-  )`);
+  );
 
-  db.run(`CREATE TABLE IF NOT EXISTS seguidores (
+  CREATE TABLE IF NOT EXISTS seguidores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     seguidor_id INTEGER NOT NULL,
     seguido_id INTEGER NOT NULL,
@@ -76,8 +71,7 @@ db.serialize(() => {
     UNIQUE(seguidor_id, seguido_id),
     FOREIGN KEY (seguidor_id) REFERENCES usuarios(id),
     FOREIGN KEY (seguido_id) REFERENCES usuarios(id)
-  )`);
-
-});
+  );
+`);
 
 module.exports = db;
