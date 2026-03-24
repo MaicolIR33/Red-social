@@ -15,13 +15,13 @@ app.use((req, res, next) => {
 });
 
 // RUTAS
-app.use("/usuarios", require("./routes/usuarios"));
-app.use("/perfiles", require("./routes/perfiles"));
-app.use("/categorias", require("./routes/categorias"));
-app.use("/posts", require("./routes/posts"));
-app.use("/comentarios", require("./routes/comentarios"));
-app.use("/likes", require("./routes/likes"));
-app.use("/seguidores", require("./routes/seguidores"));
+app.use("/api/usuarios", require("./routes/usuarios"));
+app.use("/api/perfiles", require("./routes/perfiles"));
+app.use("/api/categorias", require("./routes/categorias"));
+app.use("/api/posts", require("./routes/posts"));
+app.use("/api/comentarios", require("./routes/comentarios"));
+app.use("/api/likes", require("./routes/likes"));
+app.use("/api/seguidores", require("./routes/seguidores"));
 
 // RUTA DE PRUEBA
 app.get("/", (req, res) => {
